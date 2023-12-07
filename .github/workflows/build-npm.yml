@@ -1,0 +1,40 @@
+﻿name: Build/Publish .Nodejs
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: true
+        type: string
+      build-verbs:
+        required: false
+        type: string
+        default: 'build,test'
+        description: 'A comma-separated list of npm run verbs'
+    secrets:
+      npm_token:
+        required: true
+
+jobs:
+  build-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout and determine package version
+        id: gitversion
+        uses: viamedici-spc/github-ci/.github/actions/gitversion@feature/initial
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.node-version }}
+          registry-url: https://registry.npmjs.org/
+      - run: npm clean-install
+      - name: Execute NPM verbs
+        run: |
+          IFS=',' read -ra VERBS <<< "${{ inputs.build-verbs }}"
+          for verb in "${VERBS[@]}"; do
+            echo "Executing 'npm run $verb'"
+            npm run $verb
+          done
+      - run: npm version ${{ steps.gitversion.outputs.mostQualifiedTag }} --no-git-tag-version --allow-same-version
+      - run: npm publish --tag ${{ steps.gitversion.outputs.leastQualifiedTag }}
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
