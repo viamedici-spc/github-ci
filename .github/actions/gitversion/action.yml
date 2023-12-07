@@ -1,0 +1,120 @@
+﻿name: 'Checkout and semver using Gitversion'
+description: 'Checkout and semver using Gitversion'
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0.9.11
+      with:
+        versionSpec: '5.x'
+    - name: Create GitVersion Configuration
+      shell: bash
+      run: |
+        cat > GitVersion.yml << 'EOF'
+        branches:
+          master:
+            regex: ^master$|^main$|^[0-9]+\.[0-9]+\.[0-9]+$
+            mode: ContinuousDelivery
+            tag: ''
+            increment: Patch
+            prevent-increment-of-merged-branch-version: true
+            track-merge-target: false
+            tracks-release-branches: false
+            is-release-branch: false
+          release:
+            regex: ^releases?[/-]
+            mode: ContinuousDelivery
+            tag: beta
+            increment: Patch
+            prevent-increment-of-merged-branch-version: true
+            track-merge-target: false
+            tracks-release-branches: false
+            is-release-branch: true
+            pre-release-weight: 1000
+          feature:
+            regex: ^features?[/-]
+            mode: ContinuousDelivery
+            tag: useBranchName
+            increment: Inherit
+            prevent-increment-of-merged-branch-version: false
+            track-merge-target: false
+            tracks-release-branches: false
+            is-release-branch: false
+          pull-request:
+            regex: ^(pull|pull\-requests|pr)[/-]
+            mode: ContinuousDelivery
+            tag: PullRequest
+            increment: Inherit
+            prevent-increment-of-merged-branch-version: false
+            tag-number-pattern: '[/-](?<number>\d+)[-/]'
+            track-merge-target: false
+            tracks-release-branches: false
+            is-release-branch: false
+          hotfix:
+            regex: ^hotfix(es)?[/-]
+            mode: ContinuousDelivery
+            tag: beta
+            increment: Patch
+            prevent-increment-of-merged-branch-version: false
+            track-merge-target: false
+            tracks-release-branches: false
+            is-release-branch: false
+          support:
+            regex: ^support[/-]
+            mode: ContinuousDelivery
+            tag: ''
+            increment: Patch
+            prevent-increment-of-merged-branch-version: true
+            track-merge-target: false
+            tracks-release-branches: false
+            is-release-branch: false
+          develop:
+            regex: ^dev(elop)?(ment)?$
+            mode: ContinuousDeployment
+            tag: alpha
+            increment: Minor
+            prevent-increment-of-merged-branch-version: false
+            track-merge-target: true
+            tracks-release-branches: true
+            is-release-branch: false
+        EOF
+
+    - name: Use GitVersion
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0.9.11
+    - name: Determine Docker Tags
+      id: docker_tags
+      shell: bash
+      run: |
+        if [[ "${{ steps.gitversion.outputs.PreReleaseLabel }}" == "" ]] && [[ "${{ steps.gitversion.outputs.BuildMetaData }}" == "" ]]; then
+          dockerLeastQualifiedTag="latest"
+          semanticVersion="${{ steps.gitversion.outputs.Major }}.${{ steps.gitversion.outputs.Minor }}.${{ steps.gitversion.outputs.Patch }}"
+          dockerTags="$semanticVersion,${{ steps.gitversion.outputs.Major }}.${{ steps.gitversion.outputs.Minor }},${{ steps.gitversion.outputs.Major }},$dockerLeastQualifiedTag"
+        elif [[ "${{ steps.gitversion.outputs.PreReleaseLabel }}" =~ ^(beta|alpha)$ ]]; then
+          preReleaseLabel=${{ steps.gitversion.outputs.PreReleaseLabel }}
+          [[ "$preReleaseLabel" == "" ]] && preReleaseLabel="rc"
+          dockerLeastQualifiedTag=$preReleaseLabel
+          semanticVersion="${{ steps.gitversion.outputs.MajorMinorPatch }}-$preReleaseLabel${{ steps.gitversion.outputs.CommitsSinceVersionSourcePadded }}"
+          dockerTags="$semanticVersion,${{ steps.gitversion.outputs.MajorMinorPatch }}-$preReleaseLabel,$dockerLeastQualifiedTag"
+        else
+          preReleaseLabel=$(echo "${{ steps.gitversion.outputs.PreReleaseLabel }}" | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
+          dockerLeastQualifiedTag=$preReleaseLabel
+          buildDateTime=$(date +"%Y-%m-%d-%H:%M:%S")
+          semanticVersion="${{ steps.gitversion.outputs.MajorMinorPatch }}-$preReleaseLabel-$( date +'%Y%m%d%H%M%S' )"
+          dockerTags="$semanticVersion,${{ steps.gitversion.outputs.MajorMinorPatch }}-$preReleaseLabel,$dockerLeastQualifiedTag"
+        fi
+        
+        echo "leastQualifiedTag=$dockerLeastQualifiedTag" >> $GITHUB_OUTPUT
+        echo "semanticVersion=$semanticVersion" >> $GITHUB_OUTPUT
+        echo "dockerTags=$dockerTags" >> $GITHUB_OUTPUT
+
+outputs:
+  mostQualifiedTag:
+    value: ${{ steps.docker_tags.outputs.semanticVersion }}
+    description: 'The calculated semantic version'
+  leastQualifiedTag:
+    value: ${{ steps.docker_tags.outputs.leastQualifiedTag }}
+    description: 'The least qualified tag e.g. latest, alpha, feature-name'
