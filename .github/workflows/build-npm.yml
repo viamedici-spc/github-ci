@@ -34,7 +34,7 @@ jobs:
             echo "Executing 'npm run $verb'"
             npm run $verb
           done
-      - run: npm version ${{ steps.gitversion.outputs.mostQualifiedTag }} --no-git-tag-version --allow-same-version
+      - run: npm version "${{ steps.gitversion.outputs.mostQualifiedTag }}" --no-git-tag-version --allow-same-version
       - run: npm publish --tag ${{ steps.gitversion.outputs.leastQualifiedTag }}
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
