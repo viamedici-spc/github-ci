@@ -93,11 +93,11 @@ runs:
           dockerLeastQualifiedTag="latest"
           semanticVersion="${{ steps.gitversion.outputs.Major }}.${{ steps.gitversion.outputs.Minor }}.${{ steps.gitversion.outputs.Patch }}"
           dockerTags="$semanticVersion,${{ steps.gitversion.outputs.Major }}.${{ steps.gitversion.outputs.Minor }},${{ steps.gitversion.outputs.Major }},$dockerLeastQualifiedTag"
-        elif [[ "${{ steps.gitversion.outputs.PreReleaseLabel }}" =~ ^(beta|alpha)$ ]]; then
+        elif [[ "${{ steps.gitversion.outputs.PreReleaseLabel }}" =~ ^(|beta|alpha)$ ]]; then
           preReleaseLabel=${{ steps.gitversion.outputs.PreReleaseLabel }}
           [[ "$preReleaseLabel" == "" ]] && preReleaseLabel="rc"
           dockerLeastQualifiedTag=$preReleaseLabel
-          semanticVersion="${{ steps.gitversion.outputs.MajorMinorPatch }}-$preReleaseLabel${{ steps.gitversion.outputs.CommitsSinceVersionSourcePadded }}"
+          semanticVersion="${{ steps.gitversion.outputs.MajorMinorPatch }}-${preReleaseLabel}${{ steps.gitversion.outputs.CommitsSinceVersionSourcePadded }}"
           dockerTags="$semanticVersion,${{ steps.gitversion.outputs.MajorMinorPatch }}-$preReleaseLabel,$dockerLeastQualifiedTag"
         else
           preReleaseLabel=$(echo "${{ steps.gitversion.outputs.PreReleaseLabel }}" | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
