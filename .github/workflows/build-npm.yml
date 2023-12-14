@@ -11,6 +11,16 @@ on:
         type: string
         default: 'build,test'
         description: 'A comma-separated list of npm run verbs'
+      project-dir:
+        required: false
+        type: string
+        default: ''
+        description: ''
+      run-jspm:
+        required: false
+        type: boolean
+        default: false
+        description: ''
     secrets:
       npm_token:
         required: true
@@ -27,6 +37,7 @@ jobs:
           node-version: ${{ inputs.node-version }}
           registry-url: https://registry.npmjs.org/
       - run: npm clean-install
+        working-directory: ./${{ inputs.project-dir }}
       - name: Execute NPM verbs
         run: |
           IFS=',' read -ra VERBS <<< "${{ inputs.build-verbs }}"
@@ -34,7 +45,27 @@ jobs:
             echo "Executing 'npm run $verb'"
             npm run $verb
           done
+        working-directory: ./${{ inputs.project-dir }}
       - run: npm version "${{ steps.gitversion.outputs.mostQualifiedTag }}" --no-git-tag-version --allow-same-version
-      - run: npm publish --tag ${{ steps.gitversion.outputs.leastQualifiedTag }}
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+        working-directory: ./${{ inputs.project-dir }}
+#     - run: npm publish --tag ${{ steps.gitversion.outputs.leastQualifiedTag }}
+#       working-directory: ./${{ inputs.project-dir }}
+#       env:
+#         NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+  update-jspm:
+    runs-on: ubuntu-latest
+    needs: build-npm
+    if: ${{ inputs.run-jspm }}
+    steps:
+      - name: Checkout and determine package version
+        id: gitversion
+        uses: viamedici-spc/github-ci/.github/actions/gitversion@v1
+      - name: Extract Package Name
+        run: |
+          packageName=$(jq -r '.name' package.json)
+          echo "Package name is $packageName"
+          echo "PACKAGE_NAME=$packageName" >> $GITHUB_ENV
+        working-directory: ./${{ inputs.project-dir }}
+      - name: Extract Package Name
+        run: |
+          echo "Open URL: https://api.jspm.io/build/${{ env.PACKAGE_NAME }}@${{ steps.gitversion.outputs.mostQualifiedTag }}"
