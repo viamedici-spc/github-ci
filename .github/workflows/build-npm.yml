@@ -11,9 +11,27 @@ on:
         type: string
         default: 'build,test'
         description: 'A comma-separated list of npm run verbs'
+      project-dir:
+        required: false
+        type: string
+        default: ''
+        description: ''
+      build-jspm:
+        required: false
+        type: boolean
+        default: false
+        description: ''
+      skip-publish:
+        required: false
+        type: boolean
+        default: false
+        description: ''
     secrets:
       npm_token:
         required: true
+      npmrun-secrets:
+        required: false
+        description: 'Flat json object.'
 
 jobs:
   build-npm:
@@ -27,14 +45,72 @@ jobs:
           node-version: ${{ inputs.node-version }}
           registry-url: https://registry.npmjs.org/
       - run: npm clean-install
+        working-directory: ./${{ inputs.project-dir }}
       - name: Execute NPM verbs
         run: |
+          for key in $(echo "${NPMRUN_SECRETS}" | jq -r 'keys[]'); do
+            value=$(echo "${NPMRUN_SECRETS}" | jq -r --arg KEY "$key" '.[$KEY]')
+            export $key="$value"
+            #echo "$key=$value">> $GITHUB_OUTPUT
+          done
           IFS=',' read -ra VERBS <<< "${{ inputs.build-verbs }}"
           for verb in "${VERBS[@]}"; do
             echo "Executing 'npm run $verb'"
             npm run $verb
           done
+        env:
+          NPMRUN_SECRETS: ${{ secrets.npmrun-secrets }}
+        working-directory: ./${{ inputs.project-dir }}
       - run: npm version "${{ steps.gitversion.outputs.mostQualifiedTag }}" --no-git-tag-version --allow-same-version
+        working-directory: ./${{ inputs.project-dir }}
       - run: npm publish --tag ${{ steps.gitversion.outputs.leastQualifiedTag }}
+        working-directory: ./${{ inputs.project-dir }}
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+        if: ${{ ! inputs.skip-publish }}
+      - name: Extract Package Name
+        id: package-name
+        run: |
+          packageName=$(jq -r '.name' package.json)
+          echo "Package name is $packageName"
+          echo "PACKAGE_NAME=$packageName" >> $GITHUB_OUTPUT
+        working-directory: ./${{ inputs.project-dir }}
+    outputs:
+      package-name: ${{ steps.package-name.outputs.PACKAGE_NAME }}
+      package-version: ${{ steps.gitversion.outputs.mostQualifiedTag }}
+  build-jspm:
+    runs-on: ubuntu-latest
+    needs: build-npm
+    if: ${{ inputs.build-jspm && (! inputs.skip-publish) }}
+    steps:
+      - name: Trigger jspm
+        run: |
+          max_attempts=15
+          timeout_between_attempts=20 # seconds
+          attempt=1
+          success=false
+          sleep 10
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts"
+            # Perform the curl command and capture the HTTP status code
+            http_status=$(curl -o response.txt -w '%{http_code}' -s -X GET "https://api.jspm.io/build/${{ needs.build-npm.outputs.package-name }}@${{ needs.build-npm.outputs.package-version }}")
+            cat response.txt
+          
+            # Check if HTTP status code is 200 (OK) or another success code
+            if [ "$http_status" -eq 200 ]; then
+              success=true
+              break
+            else
+              echo "Attempt $attempt failed with status code $http_status. Retrying in $timeout_between_attempts seconds..."
+              sleep $timeout_between_attempts
+            fi
+            attempt=$((attempt+1))
+          done
+
+          if [ $success = false ]; then
+            echo "All attempts failed!"
+            exit 1
+          fi
+          # newline
+          echo ""
+          echo "Command succeeded."
