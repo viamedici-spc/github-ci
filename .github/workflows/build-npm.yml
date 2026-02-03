@@ -78,39 +78,3 @@ jobs:
     outputs:
       package-name: ${{ steps.package-name.outputs.PACKAGE_NAME }}
       package-version: ${{ steps.gitversion.outputs.mostQualifiedTag }}
-  build-jspm:
-    runs-on: ubuntu-latest
-    needs: build-npm
-    if: ${{ inputs.build-jspm && (! inputs.skip-publish) }}
-    steps:
-      - name: Trigger jspm
-        run: |
-          max_attempts=15
-          timeout_between_attempts=20 # seconds
-          attempt=1
-          success=false
-          sleep 10
-          while [ $attempt -le $max_attempts ]; do
-            echo "Attempt $attempt of $max_attempts"
-            # Perform the curl command and capture the HTTP status code
-            http_status=$(curl -o response.txt -w '%{http_code}' -s -X GET "https://api.jspm.io/build/${{ needs.build-npm.outputs.package-name }}@${{ needs.build-npm.outputs.package-version }}")
-            cat response.txt
-          
-            # Check if HTTP status code is 200 (OK) or another success code
-            if [ "$http_status" -eq 200 ]; then
-              success=true
-              break
-            else
-              echo "Attempt $attempt failed with status code $http_status. Retrying in $timeout_between_attempts seconds..."
-              sleep $timeout_between_attempts
-            fi
-            attempt=$((attempt+1))
-          done
-
-          if [ $success = false ]; then
-            echo "All attempts failed!"
-            exit 1
-          fi
-          # newline
-          echo ""
-          echo "Command succeeded."
