@@ -4,8 +4,10 @@ on:
   workflow_call:
     inputs:
       node-version:
-        required: true
+        required: false
         type: string
+        default: '24'
+        description: 'Node.js version used for build and publish.'
       build-verbs:
         required: false
         type: string
@@ -22,8 +24,6 @@ on:
         default: false
         description: ''
     secrets:
-      npm_token:
-        required: true
       npmrun-secrets:
         required: false
         description: 'Flat json object.'
@@ -31,6 +31,9 @@ on:
 jobs:
   build-npm:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout and determine package version
         id: gitversion
@@ -60,8 +63,6 @@ jobs:
         working-directory: ./${{ inputs.project-dir }}
       - run: npm publish --tag ${{ steps.gitversion.outputs.leastQualifiedTag }}
         working-directory: ./${{ inputs.project-dir }}
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
         if: ${{ ! inputs.skip-publish }}
       - name: Extract Package Name
         id: package-name

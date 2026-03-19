@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Root contains documentation and GitHub CI assets. Currently the only tracked file is `README.md`.
+- Root contains documentation and GitHub CI assets.
 - Add reusable workflows under `.github/workflows/` and composite or JavaScript actions under `.github/actions/` (recommended locations for this repo’s purpose).
 
 ## Versioning & References
@@ -20,6 +20,7 @@
 ## Security & Configuration Tips
 - Avoid hard-coding secrets; use GitHub Actions secrets or environment variables.
 - Prefer least-privilege permissions in workflows (`permissions:` blocks) and document any elevated needs.
+- npm publishing in `.github/workflows/build-npm.yml` uses npm trusted publishing via GitHub OIDC instead of a long-lived `NPM_TOKEN`; caller workflows should grant `id-token: write`, and npm trust must be configured for the calling workflow.
 
 ## Agent-Specific Instructions
 - When proposing changes, keep the repo lightweight and document new commands or conventions in this file.
