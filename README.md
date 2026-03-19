@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: viamedici-spc/github-ci/.github/workflows/build-npm.yml@v2
+    uses: viamedici-spc/github-ci/.github/workflows/build-npm.yml@v3
 ```
 
 ### Inputs
@@ -34,7 +34,7 @@ jobs:
 - `package-version`: Version from `gitversion` action.
 
 ## Versioning & references
-- This repository uses Semantic Versioning and tags with a `v` prefix (example: `v2.0.0`).
-- Consumers should pin to a full version tag for reproducibility (example: `@v2.0.0`) or use the major alias (example: `@v2`) for automatic patch/minor updates.
-- When releasing, move the major alias tag (`v2`) to the new `v2.x.y` commit so consumers on `@v2` pick up the latest compatible release.
-- Also update the internal action reference in `.github/workflows/build-npm.yml` (step: “Checkout and determine package version”) to the same release tag; for testing you can point it to a branch like `feature/v2`.
+- This repository uses Semantic Versioning and tags with a `v` prefix (example: `v3.0.0`).
+- Consumers should pin to a full version tag for reproducibility (example: `@v3.0.0`) or use the major alias (example: `@v3`) for automatic patch/minor updates.
+- When releasing, move the major alias tag (`v3`) to the new `v3.x.y` commit so consumers on `@v3` pick up the latest compatible release.
+- Also update the internal action reference in `.github/workflows/build-npm.yml` (step: “Checkout and determine package version”) to the same release tag; for testing you can point it to a branch like `feature/v3`.

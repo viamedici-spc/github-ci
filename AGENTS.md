@@ -5,8 +5,8 @@
 - Add reusable workflows under `.github/workflows/` and composite or JavaScript actions under `.github/actions/` (recommended locations for this repo’s purpose).
 
 ## Versioning & References
-- Use SemVer with `v`-prefixed tags (example: `v2.0.0`) and keep the major alias (`v2`) moved to the latest `v2.x.y` release.
-- The reusable workflow `build-npm.yml` references the internal action `.github/actions/gitversion` by ref; update that ref when releasing or testing (example: `@feature/v2` for tests, `@v2` for releases).
+- Use SemVer with `v`-prefixed tags (example: `v3.0.0`) and keep the major alias (`v3`) moved to the latest `v3.x.y` release.
+- The reusable workflow `build-npm.yml` references the internal action `.github/actions/gitversion` by ref; update that ref when releasing or testing (example: `@feature/v3` for tests, `@v3` for releases).
 
 ## Coding Style & Naming Conventions
 - Use 2-space indentation for YAML files and keep workflow/action IDs in `kebab-case` (example: `deploy-preview`).
