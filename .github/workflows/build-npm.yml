@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: Checkout and determine package version
         id: gitversion
-        uses: viamedici-spc/github-ci/.github/actions/gitversion@v2
+        uses: viamedici-spc/github-ci/.github/actions/gitversion@feature/trusted-publishing
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version }}
