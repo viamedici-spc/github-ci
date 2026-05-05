@@ -68,7 +68,7 @@ runs:
             is-release-branch: false
           develop:
             regex: ^dev(elop)?(ment)?$
-            mode: ContinuousDeployment
+            mode: ContinuousDelivery
             label: alpha
             increment: Minor
             prevent-increment:
@@ -85,7 +85,7 @@ runs:
       id: docker_tags
       shell: bash
       run: |
-        if [[ "${{ steps.gitversion.outputs.PreReleaseLabel }}" == "" ]] && [[ "${{ steps.gitversion.outputs.BuildMetaData }}" == "" ]]; then
+        if [[ "${{ steps.gitversion.outputs.PreReleaseLabel }}" == "" ]] && [[ "${{ steps.gitversion.outputs.CommitsSinceVersionSource }}" == "0" ]]; then
           dockerLeastQualifiedTag="latest"
           semanticVersion="${{ steps.gitversion.outputs.Major }}.${{ steps.gitversion.outputs.Minor }}.${{ steps.gitversion.outputs.Patch }}"
           dockerTags="$semanticVersion,${{ steps.gitversion.outputs.Major }}.${{ steps.gitversion.outputs.Minor }},${{ steps.gitversion.outputs.Major }},$dockerLeastQualifiedTag"
@@ -93,7 +93,7 @@ runs:
           preReleaseLabel=${{ steps.gitversion.outputs.PreReleaseLabel }}
           [[ "$preReleaseLabel" == "" ]] && preReleaseLabel="rc"
           dockerLeastQualifiedTag=$preReleaseLabel
-          semanticVersion="${{ steps.gitversion.outputs.MajorMinorPatch }}-${preReleaseLabel}${{ steps.gitversion.outputs.CommitsSinceVersionSourcePadded }}"
+          semanticVersion="${{ steps.gitversion.outputs.MajorMinorPatch }}-${preReleaseLabel}${{ steps.gitversion.outputs.CommitsSinceVersionSource }}"
           dockerTags="$semanticVersion,${{ steps.gitversion.outputs.MajorMinorPatch }}-$preReleaseLabel,$dockerLeastQualifiedTag"
         else
           preReleaseLabel=$(echo "${{ steps.gitversion.outputs.PreReleaseLabel }}" | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
