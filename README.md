@@ -68,42 +68,16 @@ jobs:
 - Inputs: `verify-script` (default `verify`), `output-dir` (default `dist`), `deploy` (default `false`).
 - The build job runs with `contents: read`; only the deploy job holds `pages: write` and `id-token: write`.
 
-## Build-NPM workflow
-Reusable workflow to build/test and publish npm packages.
-
-### Usage example
-```yaml
-jobs:
-  build-publish-npm:
-    permissions:
-      contents: read
-      id-token: write
-    uses: viamedici-spc/github-ci/.github/workflows/build-npm.yml@v3
-```
-
-### Inputs
-- `node-version` (optional, default `24`): Node.js version for build and publish via `actions/setup-node`.
-- `build-verbs` (optional, default `test,build`): Comma-separated list of `npm run` scripts.
-- `project-dir` (optional, default empty): Relative path to the package directory.
-- `skip-publish` (optional, default `false`): Set to `true` to skip `npm publish`.
-
-### Secrets
-- `npmrun-secrets` (optional): Flat JSON object exposed as environment variables while running the configured `npm run` scripts.
-
-### Trusted publishing
-- `build-npm.yml` now publishes to npm via GitHub Actions OIDC / npm trusted publishing. No `NPM_TOKEN` secret is required for `npm publish`.
-- The caller workflow should grant `id-token: write`. `contents: read` is sufficient for this reusable workflow unless the caller needs more.
-- Configure the npm trusted publisher against the consuming repository and its calling workflow file. For `workflow_call`-based publishes, npm validates the caller workflow identity.
-
-### Outputs
-- `package-name`: Name from `package.json`.
-- `package-version`: Version from `gitversion` action.
-
 ## Versioning & references
-- This repository uses Semantic Versioning and tags with a `v` prefix (example: `v4.0.0`). v4 adds `build-bun.yml`;
-  `build-npm.yml` is unchanged from v3.
-- Consumers should pin to a full version tag for reproducibility (example: `@v3.0.0`) or use the major alias (example: `@v3`) for automatic patch/minor updates.
-- When releasing, move the major alias tag (`v3`) to the new `v3.x.y` commit so consumers on `@v3` pick up the latest compatible release.
-- Also update the internal action reference in `.github/workflows/build-bun.yml` and `build-npm.yml` (step: “Checkout and determine package version”) to the same release tag; for testing you can point it to a branch like `feature/v4`.
+- This repository uses Semantic Versioning and tags with a `v` prefix (example: `v4.0.0`).
+- v4 adds `build-bun.yml` and `pages-bun.yml` and removes `build-npm.yml`; callers that still build with npm stay on
+  `@v3` until they move to `build-bun.yml`. The `gitversion` action no longer persists git credentials and writes its
+  configuration to `$RUNNER_TEMP` instead of `./GitVersion.yml`.
+- Consumers should pin to a full version tag for reproducibility (example: `@v4.0.0`) or use the major alias (example:
+  `@v4`) for automatic patch/minor updates.
+- When releasing, move the major alias tag (`v4`) to the new `v4.x.y` commit so consumers on `@v4` pick up the latest
+  compatible release.
+- Also update the internal action reference in `.github/workflows/build-bun.yml` (step: “Checkout and determine package
+  version”) to the same release tag; for testing you can point it to a branch like `feature/v4`.
 - Third-party actions are pinned by commit SHA with the version as a comment; Dependabot proposes updates once a month
   (`.github/dependabot.yml`).
