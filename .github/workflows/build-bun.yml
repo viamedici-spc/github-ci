@@ -105,11 +105,16 @@ jobs:
           EXTRA_RUNS: ${{ inputs.extra-runs }}
         run: |
           if [ -n "$ENV_SECRETS" ]; then
+            if ! jq -e 'type == "object" and all(.[]; type == "string")' <<< "$ENV_SECRETS" > /dev/null; then
+              echo "::error::env-secrets must be a JSON object whose values are all strings."
+              exit 1
+            fi
+            keys=$(jq -r 'keys[]' <<< "$ENV_SECRETS")
             while IFS= read -r key; do
               value=$(jq -r --arg key "$key" '.[$key]' <<< "$ENV_SECRETS")
               echo "::add-mask::$value"
               export "$key=$value"
-            done < <(jq -r 'keys[]' <<< "$ENV_SECRETS")
+            done <<< "$keys"
           fi
           bun run "$VERIFY_SCRIPT"
           if [ -n "$EXTRA_RUNS" ]; then

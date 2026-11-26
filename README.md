@@ -16,10 +16,7 @@ jobs:
       id-token: write
     uses: viamedici-spc/github-ci/.github/workflows/build-bun.yml@v4
     secrets:
-      env-secrets: >
-        {
-          "SOME_TEST_TOKEN": "${{ secrets.SOME_TEST_TOKEN }}"
-        }
+      env-secrets: '{"SOME_TEST_TOKEN": ${{ toJSON(secrets.SOME_TEST_TOKEN) }}}'
 ```
 
 ### What it does
@@ -42,8 +39,10 @@ jobs:
 - `skip-publish` (optional, default `false`): verify and pack only.
 
 ### Secrets
-- `env-secrets` (optional): flat JSON object exposed (masked) as environment variables to the verify script and the
-  extra runs.
+- `env-secrets` (optional): a JSON object whose values are strings, exposed (masked) as environment variables to the
+  verify script and the extra runs. Pass it on a single line, as in the example: the runner masks every line of a
+  secret, so a line holding only `{` would mask every brace in the log. `toJSON()` quotes the value. Anything other than
+  such an object fails the run.
 
 ### Outputs
 - `package-name`: name from `package.json`.
