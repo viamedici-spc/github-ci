@@ -32,6 +32,11 @@ on:
         type: boolean
         default: false
         description: 'Verify and pack only.'
+      publish-environment:
+        required: false
+        type: string
+        default: ''
+        description: 'GitHub environment the publish job runs in; empty for none.'
     secrets:
       env-secrets:
         required: false
@@ -146,6 +151,8 @@ jobs:
   publish:
     needs: verify
     if: needs.verify.outputs.publish == 'true'
+    # An empty name runs the job in no environment.
+    environment: ${{ inputs.publish-environment }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
