@@ -34,6 +34,12 @@ jobs:
 - The npm dist-tag is the branch's label (`feature/modern-toolchain` → `modern-toolchain`). npm refuses a dist-tag that
   reads as a version, so a run that would publish under one (`feature/v5` → `v5`) fails right after GitVersion, before
   anything is installed; rename the branch.
+- Runs of the same branch do not wait for each other. Two quick pushes can finish in the other order and leave the
+  branch's dist-tag on the older commit; nothing breaks, because dependents pin exact versions, and the next push sets
+  it right.
+- One call publishes one package. A `workspace:` dependency on another package of the same repository is packed with
+  that package's committed version (often `0.0.0`), not the version this run publishes it with, so it works only as a
+  devDependency.
 
 ### Inputs
 - `project-dir` (optional, default empty): relative path to the package directory.
