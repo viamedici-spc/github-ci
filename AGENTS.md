@@ -15,6 +15,10 @@
 - Use 2-space indentation for YAML files and keep workflow/action IDs in `kebab-case` (example: `deploy-preview`).
 - Use clear, action-oriented names for workflows (example: `ci-pr.yml`) and actions (example: `setup-toolchain`).
 - If you introduce scripting (bash, node, etc.), add a formatter or linter and note it here.
+- Lint the workflows and actions with actionlint, which also runs shellcheck on their scripts; `lint.yml` runs it on
+  every push:
+  `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color`.
+  Dependabot does not update this image; raise the version and digest by hand.
 
 ## GitVersion Configuration Notes
 - GitVersion v6+ is required by the current GitTools Actions; the config in `.github/actions/gitversion/action.yml` follows the v6 schema.
