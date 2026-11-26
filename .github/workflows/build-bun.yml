@@ -1,0 +1,157 @@
+name: Build/Publish Bun package
+
+# Verifies, packs and publishes an npm package built with Bun.
+#
+# Two jobs on purpose: `verify` installs the dependencies and runs their code (type check, lint, tests,
+# build) without any publishing right; `publish` holds `id-token: write` for npm trusted publishing and
+# runs no dependency code at all — it only publishes the tarball that `verify` packed.
+#
+# `bun publish` cannot use npm trusted publishing yet, so the tarball is packed with `bun pm pack`
+# (which rewrites `workspace:` and `catalog:` versions) and published with `npm publish`.
+
+on:
+  workflow_call:
+    inputs:
+      project-dir:
+        required: false
+        type: string
+        default: ''
+        description: 'Relative path to the package directory; empty for the repository root.'
+      verify-script:
+        required: false
+        type: string
+        default: 'verify'
+        description: 'package.json script that type-checks, lints, tests and builds the package.'
+      extra-runs:
+        required: false
+        type: string
+        default: ''
+        description: 'Shell commands run after the verify script, e.g. the tests against another React version.'
+      skip-publish:
+        required: false
+        type: boolean
+        default: false
+        description: 'Verify and pack only.'
+    secrets:
+      env-secrets:
+        required: false
+        description: 'Flat JSON object, exposed as environment variables to the verify script and the extra runs.'
+    outputs:
+      package-name:
+        description: 'Name from package.json.'
+        value: ${{ jobs.verify.outputs.package-name }}
+      package-version:
+        description: 'Version computed by GitVersion.'
+        value: ${{ jobs.verify.outputs.version }}
+
+permissions: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ./${{ inputs.project-dir }}
+    outputs:
+      package-name: ${{ steps.pack.outputs.name }}
+      version: ${{ steps.gitversion.outputs.mostQualifiedTag }}
+      dist-tag: ${{ steps.gitversion.outputs.leastQualifiedTag }}
+      tarball: ${{ steps.pack.outputs.tarball }}
+      artifact: ${{ steps.pack.outputs.artifact }}
+      publish: ${{ steps.policy.outputs.publish }}
+    steps:
+      - name: Checkout and determine package version
+        id: gitversion
+        uses: viamedici-spc/github-ci/.github/actions/gitversion@feature/v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify
+        env:
+          ENV_SECRETS: ${{ secrets.env-secrets }}
+          VERIFY_SCRIPT: ${{ inputs.verify-script }}
+          EXTRA_RUNS: ${{ inputs.extra-runs }}
+        run: |
+          if [ -n "$ENV_SECRETS" ]; then
+            while IFS= read -r key; do
+              value=$(jq -r --arg key "$key" '.[$key]' <<< "$ENV_SECRETS")
+              echo "::add-mask::$value"
+              export "$key=$value"
+            done < <(jq -r 'keys[]' <<< "$ENV_SECRETS")
+          fi
+          bun run "$VERIFY_SCRIPT"
+          if [ -n "$EXTRA_RUNS" ]; then
+            bash -euo pipefail -c "$EXTRA_RUNS"
+          fi
+
+      - name: Decide whether to publish
+        id: policy
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          SKIP: ${{ inputs.skip-publish }}
+        run: |
+          # Only branches GitVersion knows publish; any other branch (e.g. Dependabot's) and every pull
+          # request is verified only, so they never become an npm dist-tag.
+          publish=false
+          if [ "$SKIP" != "true" ] && [ "$EVENT" != "pull_request" ] \
+            && [[ "$REF" =~ ^refs/(tags/.+|heads/(main|master|features?[/-].+|releases?[/-].+|hotfix(es)?[/-].+|support[/-].+))$ ]]; then
+            publish=true
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Publish: $publish ($EVENT on $REF)"
+
+      - name: Pack
+        id: pack
+        env:
+          VERSION: ${{ steps.gitversion.outputs.mostQualifiedTag }}
+        run: |
+          bun pm pkg set version="$VERSION"
+          tarball=$(bun pm pack --destination "$RUNNER_TEMP/package" --quiet)
+          name=$(jq -r .name package.json)
+          {
+            echo "name=$name"
+            echo "tarball=$(basename "$tarball")"
+            echo "artifact=package-$(printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '-')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.pack.outputs.artifact }}
+          path: ${{ runner.temp }}/package/${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: verify
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org/
+
+      - name: Download package
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.verify.outputs.artifact }}
+          path: package
+
+      - name: Publish with npm trusted publishing
+        env:
+          TARBALL: package/${{ needs.verify.outputs.tarball }}
+          DIST_TAG: ${{ needs.verify.outputs.dist-tag }}
+        run: npm publish "$TARBALL" --tag "$DIST_TAG" --access public

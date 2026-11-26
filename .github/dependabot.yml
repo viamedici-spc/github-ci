@@ -1,0 +1,16 @@
+# Keeps the pinned action SHAs of the shared workflows current: one grouped pull request a month.
+# Library dependencies are updated by hand in the libraries themselves (see their AGENTS.md).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/gitversion
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - "*"

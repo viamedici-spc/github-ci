@@ -6,7 +6,7 @@
 
 ## Versioning & References
 - Use SemVer with `v`-prefixed tags (example: `v3.0.0`) and keep the major alias (`v3`) moved to the latest `v3.x.y` release.
-- The reusable workflow `build-npm.yml` references the internal action `.github/actions/gitversion` by ref; update that ref when releasing or testing (example: `@feature/v3` for tests, `@v3` for releases).
+- The reusable workflows `build-bun.yml` and `build-npm.yml` reference the internal action `.github/actions/gitversion` by ref; update that ref when releasing or testing (example: `@feature/v4` for tests, `@v4.0.0` for releases).
 
 ## Coding Style & Naming Conventions
 - Use 2-space indentation for YAML files and keep workflow/action IDs in `kebab-case` (example: `deploy-preview`).
@@ -20,7 +20,9 @@
 ## Security & Configuration Tips
 - Avoid hard-coding secrets; use GitHub Actions secrets or environment variables.
 - Prefer least-privilege permissions in workflows (`permissions:` blocks) and document any elevated needs.
-- npm publishing in `.github/workflows/build-npm.yml` uses npm trusted publishing via GitHub OIDC instead of a long-lived `NPM_TOKEN`; caller workflows should grant `id-token: write`, and npm trust must be configured for the calling workflow.
+- npm publishing uses npm trusted publishing via GitHub OIDC instead of a long-lived `NPM_TOKEN`; caller workflows should grant `id-token: write`, and npm trust must be configured for the calling workflow (`main.yml` in the consuming repository).
+- Keep `id-token: write` away from any job that installs dependencies or runs their code: in `build-bun.yml` the `verify` job builds and packs with `contents: read` only, and the `publish` job only publishes the packed tarball.
+- Pin third-party actions by commit SHA with the version as a comment (`uses: actions/checkout@<sha> # v7.0.1`); checkouts set `persist-credentials: false`. Dependabot (`.github/dependabot.yml`) proposes updates once a month as one grouped pull request.
 
 ## Agent-Specific Instructions
 - When proposing changes, keep the repo lightweight and document new commands or conventions in this file.
