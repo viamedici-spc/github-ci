@@ -66,6 +66,30 @@ jobs:
         id: gitversion
         uses: viamedici-spc/github-ci/.github/actions/gitversion@feature/v4
 
+      - name: Decide whether to publish
+        id: policy
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          SKIP: ${{ inputs.skip-publish }}
+          DIST_TAG: ${{ steps.gitversion.outputs.leastQualifiedTag }}
+        run: |
+          # Publishes on a push or a manual run of main or master, of a version tag, or of a branch starting with
+          # feature/, release/, hotfix/ or support/. Any other branch (e.g. Dependabot's), a pull request and any other
+          # event is verified only, so it never becomes an npm dist-tag.
+          publish=false
+          if [ "$SKIP" != "true" ] && { [ "$EVENT" = "push" ] || [ "$EVENT" = "workflow_dispatch" ]; } \
+            && [[ "$REF" =~ ^refs/(tags/v?[0-9]+\.[0-9]+\.[0-9]+.*|heads/(main|master|features?[/-].+|releases?[/-].+|hotfix(es)?[/-].+|support[/-].+))$ ]]; then
+            publish=true
+          fi
+          # npm refuses a dist-tag that reads as a version (e.g. "v5" from feature/v5); fail before building.
+          if [ "$publish" = "true" ] && [[ "$DIST_TAG" =~ ^v?[0-9] ]]; then
+            echo "::error::${REF#refs/heads/} would publish under the dist-tag \"$DIST_TAG\", which npm refuses because it reads as a version. Rename the branch so its name does not start with a version, e.g. feature/<topic>."
+            exit 1
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Publish: $publish ($EVENT on $REF, dist-tag $DIST_TAG)"
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -91,23 +115,6 @@ jobs:
           if [ -n "$EXTRA_RUNS" ]; then
             bash -euo pipefail -c "$EXTRA_RUNS"
           fi
-
-      - name: Decide whether to publish
-        id: policy
-        env:
-          EVENT: ${{ github.event_name }}
-          REF: ${{ github.ref }}
-          SKIP: ${{ inputs.skip-publish }}
-        run: |
-          # Only branches GitVersion knows publish; any other branch (e.g. Dependabot's) and every pull
-          # request is verified only, so they never become an npm dist-tag.
-          publish=false
-          if [ "$SKIP" != "true" ] && [ "$EVENT" != "pull_request" ] \
-            && [[ "$REF" =~ ^refs/(tags/.+|heads/(main|master|features?[/-].+|releases?[/-].+|hotfix(es)?[/-].+|support[/-].+))$ ]]; then
-            publish=true
-          fi
-          echo "publish=$publish" >> "$GITHUB_OUTPUT"
-          echo "Publish: $publish ($EVENT on $REF)"
 
       - name: Pack
         id: pack
