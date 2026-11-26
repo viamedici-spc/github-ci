@@ -45,6 +45,26 @@ jobs:
 - `package-name`: name from `package.json`.
 - `package-version`: version from the `gitversion` action.
 
+## Pages-Bun workflow
+Reusable workflow `pages-bun.yml` (since v4) to build a static app with Bun and deploy it to GitHub Pages.
+
+```yaml
+on: [push, pull_request, workflow_dispatch]
+permissions: {}
+jobs:
+  pages:
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: viamedici-spc/github-ci/.github/workflows/pages-bun.yml@v4
+    with:
+      deploy: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+```
+
+- Inputs: `verify-script` (default `verify`), `output-dir` (default `dist`), `deploy` (default `false`).
+- The build job runs with `contents: read`; only the deploy job holds `pages: write` and `id-token: write`.
+
 ## Build-NPM workflow
 Reusable workflow to build/test and publish npm packages.
 
