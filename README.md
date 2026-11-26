@@ -15,6 +15,8 @@ jobs:
       contents: read
       id-token: write
     uses: viamedici-spc/github-ci/.github/workflows/build-bun.yml@v4
+    with:
+      publish-environment: npm
     secrets:
       env-secrets: '{"SOME_TEST_TOKEN": ${{ toJSON(secrets.SOME_TEST_TOKEN) }}}'
 ```
@@ -23,8 +25,9 @@ jobs:
 - Job `verify` (`contents: read` only): checkout without persisted credentials, GitVersion, Bun from the
   `packageManager` field of the root `package.json`, `bun install --frozen-lockfile`, the verify script, the extra runs,
   then `bun pm pack` with the computed version and an upload of the tarball.
-- Job `publish` (`id-token: write`): downloads the tarball and runs `npm publish <tarball> --tag <label> --access public`
-  with npm trusted publishing. It runs no dependency code, so nothing the tests execute can mint the publishing token.
+- Job `publish` (`id-token: write`): downloads the tarball and runs
+  `npm publish <tarball> --tag <label> --access public` with npm trusted publishing. It runs no dependency code, so
+  nothing the tests execute can mint the publishing token.
 - Publishes only on a push or a manual run (`workflow_dispatch`) of `main`/`master`, of a version tag (`4.2.0`,
   `v4.2.0`) or of a branch starting with `feature/`, `release/`, `hotfix/` or `support/`. Every other branch (e.g.
   Dependabot's), every pull request and every other event is verified only.
@@ -37,6 +40,10 @@ jobs:
 - `verify-script` (optional, default `verify`): `package.json` script that type-checks, lints, tests and builds.
 - `extra-runs` (optional): shell commands run after the verify script, e.g. the tests against another React version.
 - `skip-publish` (optional, default `false`): verify and pack only.
+- `publish-environment` (optional, default empty): the GitHub environment the `publish` job runs in. The environment's
+  deployment rules then decide which refs may publish, and npm can bind the package's trusted publisher to it, so that
+  npm accepts a publish only from that environment. The deployment rules must admit every ref this workflow publishes
+  from; a ref they refuse fails at the `publish` job. Empty runs the job in no environment.
 
 ### Secrets
 - `env-secrets` (optional): a JSON object whose values are strings, exposed (masked) as environment variables to the
