@@ -26,10 +26,14 @@ jobs:
 - Job `verify` (`contents: read` only): checkout without persisted credentials, GitVersion, Bun from the
   `packageManager` field of the root `package.json`, `bun install --frozen-lockfile`, the verify script, the extra runs,
   then `bun pm pack` with the computed version and an upload of the tarball.
-- Job `publish` (`id-token: write`): downloads the tarball and runs `npm publish <tarball> --tag <label>` with npm
-  trusted publishing. It runs no dependency code, so nothing the tests execute can mint the publishing token.
-- Publishes only from `main`/`master`, tags and the branches GitVersion knows (`feature/`, `release/`, `hotfix/`,
-  `support/`); every other branch (e.g. Dependabot's) and every pull request is verified only.
+- Job `publish` (`id-token: write`): downloads the tarball and runs `npm publish <tarball> --tag <label> --access public`
+  with npm trusted publishing. It runs no dependency code, so nothing the tests execute can mint the publishing token.
+- Publishes only on a push or a manual run (`workflow_dispatch`) of `main`/`master`, of a version tag (`4.2.0`,
+  `v4.2.0`) or of a branch starting with `feature/`, `release/`, `hotfix/` or `support/`. Every other branch (e.g.
+  Dependabot's), every pull request and every other event is verified only.
+- The npm dist-tag is the branch's label (`feature/modern-toolchain` → `modern-toolchain`). npm refuses a dist-tag that
+  reads as a version, so a run that would publish under one (`feature/v5` → `v5`) fails right after GitVersion, before
+  anything is installed; rename the branch.
 
 ### Inputs
 - `project-dir` (optional, default empty): relative path to the package directory.
