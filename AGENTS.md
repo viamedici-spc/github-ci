@@ -9,14 +9,12 @@
   release.
 - The reusable workflow `build-bun.yml` references the internal action `.github/actions/gitversion` by ref; update that
   ref when releasing or testing (example: `@feature/v4` for tests, `@v4.0.0` for releases).
-- configurator-framer-host still calls `build-npm.yml@v3`; v4 no longer has that workflow.
 - Only repository admins create, move or delete version tags (`v*` and tags starting with a digit): a tag ruleset
   enforces it, because moving `v4` decides what every caller runs.
 - Releasing v4:
   1. Set the internal action's ref in `.github/workflows/build-bun.yml` to `@v4.0.0`.
   2. Tag `v4.0.0` and move `v4` to it.
-  3. Switch every caller to `@v4`: fp-ts-extensions, configurator-ts, configurator-react, configurator-framer,
-     configurator-ts-demo, configurator-react-demo.
+  3. Callers switch to `@v4` in their own repositories, which track that switch themselves.
   4. Delete the branch `feature/v4` once nothing references it.
 
 ## Coding Style & Naming Conventions
