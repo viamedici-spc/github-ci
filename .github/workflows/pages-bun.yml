@@ -1,0 +1,72 @@
+name: Build/Deploy Bun app to GitHub Pages
+
+# Builds a static app with Bun and, when asked to, deploys it to GitHub Pages. The build job has read access only; the
+# deploy job holds the Pages and OIDC permissions and runs no dependency code.
+
+on:
+  workflow_call:
+    inputs:
+      verify-script:
+        required: false
+        type: string
+        default: 'verify'
+        description: 'package.json script that checks and builds the app.'
+      output-dir:
+        required: false
+        type: string
+        default: 'dist'
+        description: 'Directory the build writes the static site to.'
+      deploy:
+        required: false
+        type: boolean
+        default: false
+        description: 'Deploy the build to GitHub Pages (callers pass true for a manual run on main).'
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify and build
+        env:
+          VERIFY_SCRIPT: ${{ inputs.verify-script }}
+        run: bun run "$VERIFY_SCRIPT"
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ inputs.output-dir }}
+
+  deploy:
+    needs: build
+    if: inputs.deploy
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
