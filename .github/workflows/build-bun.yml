@@ -69,7 +69,7 @@ jobs:
     steps:
       - name: Checkout and determine package version
         id: gitversion
-        uses: viamedici-spc/github-ci/.github/actions/gitversion@feature/v4
+        uses: viamedici-spc/github-ci/.github/actions/gitversion@v4.0.0
 
       - name: Decide whether to publish
         id: policy
