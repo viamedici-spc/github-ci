@@ -152,6 +152,6 @@ jobs:
 
       - name: Publish with npm trusted publishing
         env:
-          TARBALL: package/${{ needs.verify.outputs.tarball }}
+          TARBALL: ./package/${{ needs.verify.outputs.tarball }}
           DIST_TAG: ${{ needs.verify.outputs.dist-tag }}
         run: npm publish "$TARBALL" --tag "$DIST_TAG" --access public
